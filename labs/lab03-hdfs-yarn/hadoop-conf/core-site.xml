@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<!-- Configurazione condivisa da Hadoop (NameNode, DataNode, YARN) e da Spark (driver Jupyter) -->
+<configuration>
+  <!-- Filesystem di default: i path senza schema (es. /data/file.txt) puntano a HDFS -->
+  <property><name>fs.defaultFS</name><value>hdfs://namenode:8020</value></property>
+  <!-- Utente per le Web UI / WebHDFS senza autenticazione -->
+  <property><name>hadoop.http.staticuser.user</name><value>jovyan</value></property>
+</configuration>

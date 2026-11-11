@@ -1,0 +1,77 @@
+# =============================================================================
+#  LAB 05 - Spark e sorgenti esterne: database relazionale (MySQL, JDBC)
+#           e documentale (MongoDB, Spark Connector)
+#
+#  Container sempre attivi:  jupyter (driver), mysql, mongo
+#  Modalità:
+#    ./lab.sh up 05           -> + Spark Standalone (spark-master, spark-worker x N)
+#    ./lab.sh up 05 --local   -> Spark local[*] dentro Jupyter
+#
+#  I connettori (JDBC MySQL, MongoDB Spark Connector) vengono scaricati da Maven
+#  al primo avvio della SparkSession e conservati nel volume "ivy-cache".
+# =============================================================================
+name: spark-lab05
+
+x-spark-volumes: &spark-volumes
+  - ./notebooks:/home/jovyan/work
+  - ./data:/home/jovyan/data
+  - ../../datasets:/home/jovyan/datasets:ro
+  - spark-events:/opt/spark-events
+
+services:
+  jupyter:
+    extends: { file: ../common/spark-services.yml, service: jupyter }
+    volumes:
+      - ./notebooks:/home/jovyan/work
+      - ./data:/home/jovyan/data
+      - ../../datasets:/home/jovyan/datasets:ro
+      - spark-events:/opt/spark-events
+      - ivy-cache:/home/jovyan/.ivy2    # cache dei pacchetti Maven (spark.jars.packages)
+    environment:
+      MYSQL_URL: jdbc:mysql://mysql:3306/shop
+      MONGO_URI: mongodb://mongo:27017
+    depends_on:
+      mysql: { condition: service_healthy }
+      mongo: { condition: service_started }
+
+  mysql:
+    image: mysql:8.4
+    hostname: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: shop
+      MYSQL_USER: spark
+      MYSQL_PASSWORD: spark
+    command: ["--innodb-buffer-pool-size=64M", "--performance-schema=OFF"]
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./initdb:/docker-entrypoint-initdb.d:ro   # tabelle e dati di esempio
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  mongo:
+    image: mongo:8.0
+    hostname: mongo
+    command: ["--wiredTigerCacheSizeGB", "0.25"]
+    ports:
+      - "27017:27017"
+
+  spark-master:
+    extends: { file: ../common/spark-services.yml, service: spark-master }
+
+  spark-worker:
+    extends: { file: ../common/spark-services.yml, service: spark-worker }
+    volumes: *spark-volumes
+    depends_on: [spark-master]
+
+  spark-history:
+    extends: { file: ../common/spark-services.yml, service: spark-history }
+    volumes: *spark-volumes
+
+volumes:
+  spark-events:
+  ivy-cache:

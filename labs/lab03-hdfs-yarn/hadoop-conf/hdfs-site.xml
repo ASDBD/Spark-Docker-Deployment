@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<configuration>
+  <property><name>dfs.namenode.name.dir</name><value>file:///hadoop/dfs/name</value></property>
+  <property><name>dfs.datanode.data.dir</name><value>file:///hadoop/dfs/data</value></property>
+  <!-- 2 copie di ogni blocco (abbiamo 2 DataNode di default) -->
+  <property><name>dfs.replication</name><value>2</value></property>
+  <!-- Blocchi da 16 MB (default 128 MB): con file piccoli si vedono più blocchi/partizioni -->
+  <property><name>dfs.blocksize</name><value>16m</value></property>
+  <!-- Laboratorio: permessi disattivati, nessun utente/gruppo da gestire -->
+  <property><name>dfs.permissions.enabled</name><value>false</value></property>
+  <property><name>dfs.webhdfs.enabled</name><value>true</value></property>
+  <property><name>dfs.namenode.datanode.registration.ip-hostname-check</name><value>false</value></property>
+</configuration>

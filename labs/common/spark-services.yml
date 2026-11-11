@@ -1,0 +1,104 @@
+# =============================================================================
+#  Servizi Spark condivisi da tutti i laboratori.
+#
+#  Questo file NON si avvia da solo: ogni laboratorio riusa questi servizi con
+#  `extends:` e aggiunge solo i propri volumi e i servizi di cui ha bisogno
+#  (HDFS, Ozone, database, ...). Così ogni lab avvia solo i container necessari.
+#
+#  Profili (selezionati da ./lab.sh o dalla variabile COMPOSE_PROFILES):
+#    cluster  -> Spark Standalone: 1 master + N worker
+#    connect  -> Spark Connect server (client/server via gRPC)
+#    history  -> Spark History Server (UI dei job conclusi)
+#  Il servizio `jupyter` (il driver) non ha profilo: parte sempre.
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Driver: JupyterLab. È il processo che crea la SparkSession.
+  # ---------------------------------------------------------------------------
+  jupyter:
+    image: spark-lab:4.3.0
+    build: ../../docker/spark
+    hostname: jupyter
+    ports:
+      - "8888:8888"   # JupyterLab
+      - "4040:4040"   # Spark UI dell'applicazione (attiva solo con una SparkSession aperta)
+    environment:
+      # Master usato di default dai notebook: local[*] | spark://... | yarn
+      SPARK_MASTER: ${SPARK_MASTER:-spark://spark-master:7077}
+      JUPYTER_TOKEN: ${JUPYTER_TOKEN:-spark}
+      # Python usato dagli executor: percorso assoluto, identico su tutti i nodi
+      # (in YARN il PATH dei container non include /opt/conda/bin)
+      PYSPARK_PYTHON: /opt/conda/bin/python
+      # Hash delle stringhe deterministico anche sul driver (richiesto da distinct/partitionBy)
+      PYTHONHASHSEED: "0"
+    working_dir: /home/jovyan/work
+
+  # ---------------------------------------------------------------------------
+  # Spark Standalone: master
+  # ---------------------------------------------------------------------------
+  spark-master:
+    image: spark-lab:4.3.0
+    build: ../../docker/spark
+    hostname: spark-master
+    profiles: ["cluster"]
+    command: ["/usr/local/spark/bin/spark-class", "org.apache.spark.deploy.master.Master",
+              "--host", "spark-master", "--port", "7077", "--webui-port", "8080"]
+    environment:
+      SPARK_DAEMON_MEMORY: 256m
+    ports:
+      - "8080:8080"   # Web UI del master (worker registrati, applicazioni)
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # ---------------------------------------------------------------------------
+  # Spark Standalone: worker (scalabile, vedi SPARK_WORKERS)
+  # ---------------------------------------------------------------------------
+  spark-worker:
+    image: spark-lab:4.3.0
+    build: ../../docker/spark
+    profiles: ["cluster"]
+    command: ["/usr/local/spark/bin/spark-class", "org.apache.spark.deploy.worker.Worker",
+              "spark://spark-master:7077"]
+    environment:
+      SPARK_WORKER_CORES: ${SPARK_WORKER_CORES:-1}
+      SPARK_WORKER_MEMORY: ${SPARK_WORKER_MEMORY:-1g}
+      SPARK_DAEMON_MEMORY: 256m
+    deploy:
+      replicas: ${SPARK_WORKERS:-2}
+    healthcheck: { disable: true }   # l'healthcheck dell'immagine controlla Jupyter
+
+  # ---------------------------------------------------------------------------
+  # Spark Connect: il driver vive nel server, il client (notebook) parla gRPC.
+  # ---------------------------------------------------------------------------
+  spark-connect:
+    image: spark-lab:4.3.0
+    build: ../../docker/spark
+    hostname: spark-connect
+    profiles: ["connect"]
+    command: ["/usr/local/spark/sbin/start-connect-server.sh",
+              "--master", "spark://spark-master:7077",
+              "--conf", "spark.driver.memory=768m",
+              "--conf", "spark.cores.max=1"]
+    healthcheck: { disable: true }
+    ports:
+      - "15002:15002" # endpoint gRPC Spark Connect
+      - "4041:4040"   # Spark UI del server Connect
+
+  # ---------------------------------------------------------------------------
+  # Spark History Server: legge gli event log in /opt/spark-events
+  # ---------------------------------------------------------------------------
+  spark-history:
+    image: spark-lab:4.3.0
+    build: ../../docker/spark
+    profiles: ["history"]
+    command: ["/usr/local/spark/bin/spark-class", "org.apache.spark.deploy.history.HistoryServer"]
+    environment:
+      SPARK_DAEMON_MEMORY: 256m
+    healthcheck: { disable: true }
+    ports:
+      - "18080:18080"
