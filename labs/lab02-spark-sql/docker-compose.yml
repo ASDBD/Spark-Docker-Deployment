@@ -1,0 +1,41 @@
+# =============================================================================
+#  LAB 02 - Spark SQL, DataFrame, Catalyst e formati colonnari (Parquet)
+#
+#  Container:  jupyter (driver)  [+ spark-master, spark-worker x N]
+#  Modalità:   ./lab.sh up 02             -> Standalone (default)
+#              ./lab.sh up 02 --local     -> solo Jupyter, Spark in local[*]
+#              ./lab.sh up 02 --connect   -> Standalone + Spark Connect server
+# =============================================================================
+name: spark-lab02
+
+x-spark-volumes: &spark-volumes
+  - ./notebooks:/home/jovyan/work
+  - ./data:/home/jovyan/data                  # output condiviso driver/executor
+  - ../../datasets:/home/jovyan/datasets:ro
+  - spark-events:/opt/spark-events
+
+services:
+  jupyter:
+    extends: { file: ../common/spark-services.yml, service: jupyter }
+    volumes: *spark-volumes
+
+  spark-master:
+    extends: { file: ../common/spark-services.yml, service: spark-master }
+
+  spark-worker:
+    extends: { file: ../common/spark-services.yml, service: spark-worker }
+    volumes: *spark-volumes
+    depends_on: [spark-master]
+
+  spark-connect:
+    extends: { file: ../common/spark-services.yml, service: spark-connect }
+    volumes: *spark-volumes
+    depends_on:
+      spark-master: { condition: service_healthy }
+
+  spark-history:
+    extends: { file: ../common/spark-services.yml, service: spark-history }
+    volumes: *spark-volumes
+
+volumes:
+  spark-events:

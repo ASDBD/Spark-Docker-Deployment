@@ -1,0 +1,91 @@
+# =============================================================================
+#  LAB 04 - Spark + Apache Ozone (object store compatibile Hadoop e S3)
+#
+#  Container sempre attivi:  jupyter (driver), scm, om, datanode, s3g
+#  Modalità:
+#    ./lab.sh up 04           -> Ozone + Spark Standalone (spark-master, spark-worker x N)
+#    ./lab.sh up 04 --local   -> Ozone + Spark local[*] dentro Jupyter (meno RAM)
+#    ./lab.sh up 04 --recon   -> aggiunge Ozone Recon (UI di monitoraggio, porta 9888)
+# =============================================================================
+name: spark-lab04
+
+x-spark-volumes: &spark-volumes
+  - ./notebooks:/home/jovyan/work
+  - ./data:/home/jovyan/data
+  - ../../datasets:/home/jovyan/datasets:ro
+  - spark-events:/opt/spark-events
+
+x-ozone: &ozone
+  image: apache/ozone:${OZONE_VERSION:-2.2.1}
+  env_file: [./ozone.env]
+
+services:
+  # ---------------------------------------------------------------- driver
+  jupyter:
+    extends: { file: ../common/spark-services.yml, service: jupyter }
+    volumes: *spark-volumes
+    environment:
+      # Endpoint usati dai notebook
+      OZONE_OM: om
+      S3_ENDPOINT: http://s3g:9878
+
+  # ---------------------------------------------------------------- Ozone
+  scm:                                   # Storage Container Manager: blocchi/container/pipeline
+    <<: *ozone
+    hostname: scm
+    command: ["ozone", "scm"]
+    environment:
+      ENSURE_SCM_INITIALIZED: /data/metadata/scm/current/VERSION
+    ports:
+      - "9876:9876"   # Web UI SCM
+
+  om:                                    # Ozone Manager: namespace volumi/bucket/chiavi
+    <<: *ozone
+    hostname: om
+    command: ["ozone", "om"]
+    environment:
+      ENSURE_OM_INITIALIZED: /data/metadata/om/current/VERSION
+      WAITFOR: scm:9876
+    ports:
+      - "9874:9874"   # Web UI OM
+
+  datanode:                              # memorizza i dati (container da 256 MB)
+    <<: *ozone
+    command: ["ozone", "datanode"]
+    environment:
+      WAITFOR: scm:9876
+
+  s3g:                                   # S3 Gateway: API compatibile Amazon S3
+    <<: *ozone
+    hostname: s3g
+    command: ["ozone", "s3g"]
+    environment:
+      WAITFOR: om:9874
+    ports:
+      - "9878:9878"   # endpoint S3
+
+  recon:                                 # Recon: UI di monitoraggio (opzionale)
+    <<: *ozone
+    hostname: recon
+    profiles: ["recon"]
+    command: ["ozone", "recon"]
+    environment:
+      WAITFOR: om:9874
+    ports:
+      - "9888:9888"
+
+  # ---------------------------------------------------------------- Spark Standalone (profilo "cluster")
+  spark-master:
+    extends: { file: ../common/spark-services.yml, service: spark-master }
+
+  spark-worker:
+    extends: { file: ../common/spark-services.yml, service: spark-worker }
+    volumes: *spark-volumes
+    depends_on: [spark-master]
+
+  spark-history:
+    extends: { file: ../common/spark-services.yml, service: spark-history }
+    volumes: *spark-volumes
+
+volumes:
+  spark-events:

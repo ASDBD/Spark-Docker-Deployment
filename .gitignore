@@ -1,0 +1,13 @@
+# Output prodotti dai notebook (ogni lab ha la propria cartella data/)
+labs/*/data/*
+!labs/*/data/.gitkeep
+
+# Jupyter / Python
+.ipynb_checkpoints/
+__pycache__/
+spark-warehouse/
+metastore_db/
+derby.log
+
+# macOS
+.DS_Store

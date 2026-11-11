@@ -1,0 +1,118 @@
+# =============================================================================
+#  LAB 03 - Spark + HDFS (storage distribuito) e Spark su YARN
+#
+#  Container sempre attivi:  jupyter (driver), namenode, datanode1, datanode2
+#  Modalità:
+#    ./lab.sh up 03          -> HDFS + Spark Standalone (spark-master, spark-worker x N)
+#    ./lab.sh up 03 --yarn   -> HDFS + YARN (resourcemanager, nodemanager): Spark gira su YARN
+#    ./lab.sh up 03 --local  -> HDFS + Spark local[*] dentro Jupyter
+# =============================================================================
+name: spark-lab03
+
+x-spark-volumes: &spark-volumes
+  - ./notebooks:/home/jovyan/work
+  - ./data:/home/jovyan/data
+  - ../../datasets:/home/jovyan/datasets:ro
+  - spark-events:/opt/spark-events
+
+# File di configurazione Hadoop montati nei demoni Hadoop
+x-hadoop-conf: &hadoop-conf
+  - ./hadoop-conf/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml:ro
+  - ./hadoop-conf/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml:ro
+  - ./hadoop-conf/yarn-site.xml:/opt/hadoop/etc/hadoop/yarn-site.xml:ro
+  - ./hadoop-conf/capacity-scheduler.xml:/opt/hadoop/etc/hadoop/capacity-scheduler.xml:ro
+
+x-hadoop: &hadoop
+  image: spark-lab-hadoop:4.3.0
+  build: ../../docker/hadoop
+  volumes: *hadoop-conf
+  healthcheck: { disable: true }
+
+services:
+  # ---------------------------------------------------------------- driver
+  jupyter:
+    extends: { file: ../common/spark-services.yml, service: jupyter }
+    environment:
+      # Il driver legge core-site/hdfs-site/yarn-site da qui:
+      # serve per hdfs:// come filesystem di default e per --master yarn
+      HADOOP_CONF_DIR: /opt/hadoop-conf
+      YARN_CONF_DIR: /opt/hadoop-conf
+    volumes:
+      - ./notebooks:/home/jovyan/work
+      - ./data:/home/jovyan/data
+      - ../../datasets:/home/jovyan/datasets:ro
+      - spark-events:/opt/spark-events
+      - ./hadoop-conf:/opt/hadoop-conf:ro
+    depends_on: [namenode]
+
+  # ---------------------------------------------------------------- HDFS
+  namenode:
+    <<: *hadoop
+    hostname: namenode
+    command: ["namenode"]
+    ports:
+      - "9870:9870"   # Web UI del NameNode (file, blocchi, DataNode)
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9870"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  # Due DataNode con nome esplicito: nelle posizioni dei blocchi si legge chi ha cosa
+  datanode1:
+    <<: *hadoop
+    hostname: datanode1
+    command: ["datanode"]
+    depends_on:
+      namenode: { condition: service_healthy }
+
+  datanode2:
+    <<: *hadoop
+    hostname: datanode2
+    command: ["datanode"]
+    depends_on:
+      namenode: { condition: service_healthy }
+
+  # ---------------------------------------------------------------- YARN (profilo "yarn")
+  resourcemanager:
+    <<: *hadoop
+    hostname: resourcemanager
+    profiles: ["yarn"]
+    command: ["resourcemanager"]
+    ports:
+      - "8088:8088"   # Web UI di YARN (applicazioni, container, code)
+    depends_on:
+      namenode: { condition: service_healthy }
+
+  nodemanager:
+    <<: *hadoop
+    hostname: nodemanager
+    profiles: ["yarn"]
+    command: ["nodemanager"]
+    volumes:
+      - ./hadoop-conf/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml:ro
+      - ./hadoop-conf/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml:ro
+      - ./hadoop-conf/yarn-site.xml:/opt/hadoop/etc/hadoop/yarn-site.xml:ro
+      - ./hadoop-conf/capacity-scheduler.xml:/opt/hadoop/etc/hadoop/capacity-scheduler.xml:ro
+      # gli executor YARN girano qui: stessi percorsi locali del driver (come i worker Standalone)
+      - ./data:/home/jovyan/data
+      - ../../datasets:/home/jovyan/datasets:ro
+    ports:
+      - "8042:8042"   # Web UI del NodeManager (container in esecuzione, log)
+    depends_on: [resourcemanager]
+
+  # ---------------------------------------------------------------- Spark Standalone (profilo "cluster")
+  spark-master:
+    extends: { file: ../common/spark-services.yml, service: spark-master }
+
+  spark-worker:
+    extends: { file: ../common/spark-services.yml, service: spark-worker }
+    volumes: *spark-volumes
+    depends_on: [spark-master]
+
+  spark-history:
+    extends: { file: ../common/spark-services.yml, service: spark-history }
+    volumes: *spark-volumes
+
+volumes:
+  spark-events:
