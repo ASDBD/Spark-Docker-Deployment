@@ -1,7 +1,7 @@
 """
 Generatore di un dataset sintetico "e-commerce" usato dai notebook del Lab 02.
 
-I dati sono generati IN PARALLELO dagli executor (spark.range + funzioni SQL),
+I dati sono generati IN PARALLELO dai task Spark (spark.range + funzioni SQL),
 quindi la dimensione può crescere senza passare dalla memoria del driver.
 Il seme fisso rende i risultati riproducibili.
 """

@@ -57,7 +57,7 @@ Opzioni, tutte tramite variabili d'ambiente di Compose:
 |---|---|
 | `SPARK_WORKERS=3 docker compose up -d` | numero di worker Standalone (default 2; lab 01 e 03) |
 | `COMPOSE_PROFILES=yarn SPARK_MASTER=yarn docker compose up -d` | lab 03 con YARN al posto dello Standalone |
-| `COMPOSE_PROFILES=cluster,history docker compose up -d` | aggiunge lo Spark History Server (http://localhost:18080) nei lab 01 e 03; negli altri, `COMPOSE_PROFILES=history` |
+| `COMPOSE_PROFILES=cluster,history docker compose up -d` | aggiunge lo Spark History Server (http://localhost:18080) nei lab 01 e 03; negli altri, `COMPOSE_PROFILES=history`; lab 03 con YARN: `COMPOSE_PROFILES=yarn,history SPARK_MASTER=yarn` |
 | `COMPOSE_PROFILES=recon docker compose up -d` | aggiunge Ozone Recon (http://localhost:9888, solo lab 04) |
 
 Altri comandi utili: `docker compose ps`, `docker compose logs -f namenode`, `docker compose --profile '*' stop` (ferma mantenendo lo stato).
