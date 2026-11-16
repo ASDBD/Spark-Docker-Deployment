@@ -1,10 +1,13 @@
 # =============================================================================
 #  LAB 01 - Spark Core: modalità di esecuzione, RDD, MapReduce, calcolo parallelo
 #
-#  Container:  jupyter (driver)  [+ spark-master, spark-worker x N]  [+ spark-connect]
-#  Modalità:   ./lab.sh up 01             -> Standalone (default)
-#              ./lab.sh up 01 --local     -> solo Jupyter, Spark in local[*]
-#              ./lab.sh up 01 --connect   -> Standalone + Spark Connect server
+#  Container:  jupyter (driver), spark-master, spark-worker x N
+#  Modalità:   Spark Standalone (il lab riguarda il calcolo distribuito)
+#
+#  Da questa cartella:
+#    docker compose up -d --build
+#    docker compose --profile '*' down -v
+#    SPARK_WORKERS=3 docker compose up -d    # numero di worker (default 2)
 # =============================================================================
 name: spark-lab01
 
@@ -26,12 +29,6 @@ services:
     extends: { file: ../common/spark-services.yml, service: spark-worker }
     volumes: *spark-volumes
     depends_on: [spark-master]
-
-  spark-connect:
-    extends: { file: ../common/spark-services.yml, service: spark-connect }
-    volumes: *spark-volumes
-    depends_on:
-      spark-master: { condition: service_healthy }
 
   spark-history:
     extends: { file: ../common/spark-services.yml, service: spark-history }

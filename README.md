@@ -6,62 +6,61 @@ Ogni laboratorio avvia **solo i container di cui ha bisogno** (niente HDFS se no
 
 | Lab | Argomento | Container avviati |
 |---|---|---|
-| [01 – Spark Core](labs/lab01-spark-core) | modalità di esecuzione (local, standalone, Spark Connect), RDD, lazy evaluation, **MapReduce** (word count, indice invertito), **calcolo parallelo** (Monte Carlo, speedup), broadcast, accumulatori, cache, tolleranza ai guasti, `spark-submit` | jupyter, spark-master, 2 × spark-worker |
-| [02 – Spark SQL e Parquet](labs/lab02-spark-sql) | DataFrame, **Spark SQL**, join, window function, UDF / Pandas UDF, Catalyst; formati CSV/JSON/ORC/**Parquet**, pushdown, `partitionBy`, compressione, schema evolution; AQE, strategie di join, cache | jupyter, spark-master, 2 × spark-worker |
-| [03 – HDFS e YARN](labs/lab03-hdfs-yarn) | **HDFS** (WebHDFS, blocchi e repliche, API FileSystem), Spark su HDFS, Parquet su HDFS; **Spark su YARN** | jupyter, namenode, 2 × datanode + Spark Standalone **oppure** YARN (resourcemanager, nodemanager) |
-| [04 – Apache Ozone](labs/lab04-ozone) | **Ozone** come storage per Spark (`ofs://`), volumi/bucket/chiavi, Parquet su Ozone; accesso **S3** (boto3, PyArrow) agli stessi dati | jupyter, scm, om, datanode, s3g, spark-master, 2 × spark-worker |
-| [05 – Database](labs/lab05-database) | **JDBC/MySQL** (pushdown, lettura parallela, scrittura) e **MongoDB** (documenti annidati, aggregation pipeline) | jupyter, mysql, mongo, spark-master, 2 × spark-worker |
+| [01 – Spark Core](labs/lab01-spark-core) | modalità di esecuzione (local, standalone), RDD, lazy evaluation, **MapReduce** (word count, indice invertito), **calcolo parallelo** (Monte Carlo, speedup), broadcast, accumulatori, cache, tolleranza ai guasti, `spark-submit` | jupyter, spark-master, 2 × spark-worker (**Standalone**) |
+| [02 – Spark SQL e Parquet](labs/lab02-spark-sql) | DataFrame, **Spark SQL**, join, window function, UDF / Pandas UDF, Catalyst; formati CSV/JSON/ORC/**Parquet**, pushdown, `partitionBy`, compressione, schema evolution; AQE, strategie di join, cache | jupyter (**local**) |
+| [03 – HDFS e YARN](labs/lab03-hdfs-yarn) | **HDFS** (WebHDFS, blocchi e repliche, API FileSystem), Spark su HDFS, Parquet su HDFS; **Spark su YARN** | jupyter, namenode, 2 × datanode + **Standalone** (spark-master, 2 × spark-worker) **oppure** **YARN** (resourcemanager, nodemanager) |
+| [04 – Apache Ozone](labs/lab04-ozone) | **Ozone** come storage per Spark (`ofs://`), volumi/bucket/chiavi, Parquet su Ozone; accesso **S3** (boto3, PyArrow) agli stessi dati | jupyter (**local**), scm, om, datanode, s3g |
+| [05 – Database](labs/lab05-database) | **JDBC/MySQL** (pushdown, lettura parallela, scrittura) e **MongoDB** (documenti annidati, aggregation pipeline) | jupyter (**local**), mysql, mongo |
 
 ## Requisiti
 
 * Docker Desktop (macOS/Windows) o Docker Engine + Compose v2 (Linux).
 * **Architettura**: funziona nativamente sia su **amd64** (Intel/AMD) sia su **arm64** (Apple Silicon). Tutte le immagini usate sono multi-architettura (vedi [Immagini](#immagini)).
-* Memoria assegnata a Docker: almeno **4 GB** (consigliati 6 GB per i lab 03 e 04). In caso di poca memoria usare `--local` o `--workers 1`.
+* Memoria assegnata a Docker: almeno **4 GB** (consigliati 6 GB per i lab 03 e 04). In caso di poca memoria nel lab 01 usare `SPARK_WORKERS=1`.
 * Spazio disco: circa 9 GB per le immagini.
 
 ## Avvio rapido
 
+Ogni laboratorio si avvia **in autonomia con il solo Docker Compose**, dalla sua cartella (la modalità Spark è già impostata nel suo `.env`; le immagini vengono costruite al primo `up`, circa 5-10 minuti):
+
 ```bash
-./lab.sh build          # la prima volta (circa 5-10 minuti): costruisce le immagini
-./lab.sh list           # elenco dei laboratori
-./lab.sh up 01          # avvia il lab 01
+cd labs/lab01-spark-core
+docker compose up -d --build           # avvia il lab
+docker compose --profile '*' down -v   # ferma e rimuove container e volumi
 ```
 
 Aprire **JupyterLab** su http://localhost:8888/lab?token=spark ed eseguire i notebook nell'ordine.
-
-```bash
-./lab.sh down 01        # ferma e rimuove i container del lab (prima di passare al successivo)
-```
 
 > Si consiglia di tenere attivo **un laboratorio alla volta**: usano le stesse porte.
 
 ## Modalità di esecuzione
 
-Lo stesso codice Spark può girare con cluster manager diversi. `lab.sh` sceglie i container e imposta la variabile `SPARK_MASTER` letta dai notebook.
+Lo stesso codice Spark può girare con cluster manager diversi; i notebook leggono il master dalla variabile `SPARK_MASTER`. Ogni lab usa la modalità più adatta al suo argomento (impostata nel `.env`):
 
-| Comando | Modalità | Master Spark | Lab |
+| Modalità | Master | Dove girano gli executor | Container |
 |---|---|---|---|
-| `./lab.sh up 01` | **Standalone** (default): master + worker | `spark://spark-master:7077` | tutti |
-| `./lab.sh up 01 --local` | **Locale**: solo Jupyter, executor come thread del driver | `local[*]` | tutti |
-| `./lab.sh up 01 --connect` | Standalone + **Spark Connect** server (client gRPC) | `sc://spark-connect:15002` | 01, 02 |
-| `./lab.sh up 03 --yarn` | **Hadoop YARN** al posto dello Standalone | `yarn` | 03 |
+| **Local** | `local[*]` | thread dentro il driver (Jupyter): nessun cluster, minimo consumo di RAM | solo `jupyter` |
+| **Standalone** | `spark://spark-master:7077` | container `spark-worker`, gestiti dal master di Spark: un vero cluster, si vede la distribuzione dei task | `jupyter`, `spark-master`, N × `spark-worker` |
+| **YARN** | `yarn` | container YARN del NodeManager, assegnati dal ResourceManager di Hadoop (come nei cluster Hadoop reali) | `jupyter`, HDFS, `resourcemanager`, `nodemanager` |
 
-Opzioni aggiuntive:
+| Lab | Modalità | Perché |
+|---|---|---|
+| 01 – Spark Core | Standalone | il lab riguarda calcolo distribuito, speedup, broadcast, tolleranza ai guasti: servono più executor |
+| 02 – Spark SQL e Parquet | Local | DataFrame, SQL e formati si studiano bene su una sola macchina e con poca RAM |
+| 03 – HDFS e YARN | Standalone (default) o **YARN** | usa HDFS, lo storage di Hadoop: YARN è il cluster manager abituale |
+| 04 – Ozone | Local | il lab riguarda lo storage: il cluster Ozone consuma già molta RAM |
+| 05 – Database | Local | il lab riguarda l'accesso alle sorgenti dati esterne |
 
-| Opzione | Effetto |
+Opzioni, tutte tramite variabili d'ambiente di Compose:
+
+| Comando | Effetto |
 |---|---|
-| `--workers N` | numero di worker Standalone (default 2, 3 con `--connect`) |
-| `--history` | Spark History Server su http://localhost:18080 (job già conclusi) |
-| `--recon` | Ozone Recon su http://localhost:9888 (solo lab 04) |
+| `SPARK_WORKERS=3 docker compose up -d` | numero di worker Standalone (default 2; lab 01 e 03) |
+| `COMPOSE_PROFILES=yarn SPARK_MASTER=yarn docker compose up -d` | lab 03 con YARN al posto dello Standalone |
+| `COMPOSE_PROFILES=cluster,history docker compose up -d` | aggiunge lo Spark History Server (http://localhost:18080) nei lab 01 e 03; negli altri, `COMPOSE_PROFILES=history` |
+| `COMPOSE_PROFILES=recon docker compose up -d` | aggiunge Ozone Recon (http://localhost:9888, solo lab 04) |
 
-Altri comandi: `./lab.sh ps 03`, `./lab.sh logs 03 namenode`, `./lab.sh stop 03` (ferma mantenendo lo stato).
-
-`lab.sh` è solo una comodità: in ogni cartella si può usare direttamente Docker Compose, ad esempio:
-
-```bash
-cd labs/lab03-hdfs-yarn
-COMPOSE_PROFILES=yarn SPARK_MASTER=yarn docker compose up -d
-```
+Altri comandi utili: `docker compose ps`, `docker compose logs -f namenode`, `docker compose --profile '*' stop` (ferma mantenendo lo stato).
 
 ## Interfacce web
 
@@ -69,19 +68,18 @@ COMPOSE_PROFILES=yarn SPARK_MASTER=yarn docker compose up -d
 |---|---|---|
 | JupyterLab | http://localhost:8888 (token `spark`) | sempre |
 | Spark UI dell'applicazione | http://localhost:4040 | con una SparkSession attiva |
-| Spark Master | http://localhost:8080 | modalità Standalone |
+| Spark Master | http://localhost:8080 | modalità Standalone (lab 01, 03) |
 | HDFS NameNode | http://localhost:9870 | lab 03 |
-| YARN ResourceManager / NodeManager | http://localhost:8088 · http://localhost:8042 | lab 03 `--yarn` |
+| YARN ResourceManager / NodeManager | http://localhost:8088 · http://localhost:8042 | lab 03 con YARN |
 | Ozone Manager / SCM / S3 Gateway | http://localhost:9874 · http://localhost:9876 · http://localhost:9878 | lab 04 |
 | MySQL / MongoDB | `localhost:3306` (spark/spark) · `localhost:27017` | lab 05 |
 
 ## Struttura del repository
 
 ```
-lab.sh                     avvio/arresto dei laboratori
 datasets/                  dati di input condivisi (montati in sola lettura su tutti i nodi)
 docker/
-  spark/                   immagine comune: driver Jupyter, master, worker, Spark Connect
+  spark/                   immagine comune: driver Jupyter, master, worker
   hadoop/                  immagine HDFS + YARN (lab 03)
 labs/
   common/spark-services.yml   servizi Spark riutilizzati da ogni lab (extends)
@@ -106,7 +104,7 @@ I connettori per MySQL e MongoDB sono scaricati da Maven Central al primo utiliz
 
 ## Risoluzione problemi
 
-* **I container si chiudono / errori di memoria** → aumentare la RAM di Docker oppure usare `--local` / `--workers 1`.
-* **Porta già in uso** → un altro laboratorio è ancora attivo: `./lab.sh down <lab>`.
+* **I container si chiudono / errori di memoria** → aumentare la RAM di Docker oppure usare `SPARK_WORKERS=1` (lab 01).
+* **Porta già in uso** → un altro laboratorio è ancora attivo: `docker compose --profile '*' down -v` nella cartella del lab.
 * **Linux: permessi negati su `data/`** → i container girano con UID 1000; se il proprio utente ha un UID diverso: `chmod -R a+rwX labs/*/data`.
 * **Il notebook YARN non trova `/dati/...`** → eseguire prima `01_hdfs_e_spark` nella stessa sessione (`down` cancella HDFS).

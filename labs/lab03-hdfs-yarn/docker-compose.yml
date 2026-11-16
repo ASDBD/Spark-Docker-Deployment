@@ -1,11 +1,13 @@
 # =============================================================================
 #  LAB 03 - Spark + HDFS (storage distribuito) e Spark su YARN
 #
-#  Container sempre attivi:  jupyter (driver), namenode, datanode1, datanode2
-#  Modalità:
-#    ./lab.sh up 03          -> HDFS + Spark Standalone (spark-master, spark-worker x N)
-#    ./lab.sh up 03 --yarn   -> HDFS + YARN (resourcemanager, nodemanager): Spark gira su YARN
-#    ./lab.sh up 03 --local  -> HDFS + Spark local[*] dentro Jupyter
+#  Container:  jupyter (driver), namenode, datanode1, datanode2 + Standalone OPPURE YARN
+#  Modalità:   Standalone (default) oppure YARN
+#
+#  Da questa cartella:
+#    docker compose up -d --build                                    # HDFS + Standalone
+#    COMPOSE_PROFILES=yarn SPARK_MASTER=yarn docker compose up -d     # HDFS + YARN
+#    docker compose --profile '*' down -v
 # =============================================================================
 name: spark-lab03
 

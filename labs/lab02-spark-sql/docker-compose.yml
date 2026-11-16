@@ -1,10 +1,12 @@
 # =============================================================================
 #  LAB 02 - Spark SQL, DataFrame, Catalyst e formati colonnari (Parquet)
 #
-#  Container:  jupyter (driver)  [+ spark-master, spark-worker x N]
-#  Modalità:   ./lab.sh up 02             -> Standalone (default)
-#              ./lab.sh up 02 --local     -> solo Jupyter, Spark in local[*]
-#              ./lab.sh up 02 --connect   -> Standalone + Spark Connect server
+#  Container:  jupyter (driver)
+#  Modalità:   Spark local[*] dentro Jupyter (SQL e Parquet non richiedono un cluster)
+#
+#  Da questa cartella:
+#    docker compose up -d --build
+#    docker compose --profile '*' down -v
 # =============================================================================
 name: spark-lab02
 
@@ -18,20 +20,6 @@ services:
   jupyter:
     extends: { file: ../common/spark-services.yml, service: jupyter }
     volumes: *spark-volumes
-
-  spark-master:
-    extends: { file: ../common/spark-services.yml, service: spark-master }
-
-  spark-worker:
-    extends: { file: ../common/spark-services.yml, service: spark-worker }
-    volumes: *spark-volumes
-    depends_on: [spark-master]
-
-  spark-connect:
-    extends: { file: ../common/spark-services.yml, service: spark-connect }
-    volumes: *spark-volumes
-    depends_on:
-      spark-master: { condition: service_healthy }
 
   spark-history:
     extends: { file: ../common/spark-services.yml, service: spark-history }

@@ -1,6 +1,6 @@
 # =============================================================================
 #  Immagine comune a TUTTI i laboratori:
-#  driver (Jupyter), Spark master, Spark worker, Spark Connect server.
+#  driver (Jupyter), Spark master, Spark worker.
 #
 #  Usare la stessa immagine per driver ed executor garantisce la stessa
 #  versione di Python/Java/Spark su tutti i nodi (requisito di PySpark).
@@ -33,8 +33,7 @@ RUN mkdir -p /opt/spark-work /opt/spark-events && \
 USER ${NB_UID}
 
 # boto3: client S3 (usato con il S3 Gateway di Ozone)
-# zstandard: compressione usata dal client Spark Connect
-RUN pip install --no-cache-dir boto3 zstandard && \
+RUN pip install --no-cache-dir boto3 && \
     mkdir -p /home/jovyan/.ivy2   # cache di spark.jars.packages (montata come volume)
 
 ENV SPARK_WORKER_DIR=/opt/spark-work \

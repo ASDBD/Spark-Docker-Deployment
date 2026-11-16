@@ -2,13 +2,15 @@
 #  LAB 05 - Spark e sorgenti esterne: database relazionale (MySQL, JDBC)
 #           e documentale (MongoDB, Spark Connector)
 #
-#  Container sempre attivi:  jupyter (driver), mysql, mongo
-#  Modalità:
-#    ./lab.sh up 05           -> + Spark Standalone (spark-master, spark-worker x N)
-#    ./lab.sh up 05 --local   -> Spark local[*] dentro Jupyter
+#  Container:  jupyter (driver), mysql, mongo
+#  Modalità:   Spark local[*] dentro Jupyter
 #
 #  I connettori (JDBC MySQL, MongoDB Spark Connector) vengono scaricati da Maven
 #  al primo avvio della SparkSession e conservati nel volume "ivy-cache".
+#
+#  Da questa cartella:
+#    docker compose up -d --build
+#    docker compose --profile '*' down -v
 # =============================================================================
 name: spark-lab05
 
@@ -59,14 +61,6 @@ services:
     command: ["--wiredTigerCacheSizeGB", "0.25"]
     ports:
       - "27017:27017"
-
-  spark-master:
-    extends: { file: ../common/spark-services.yml, service: spark-master }
-
-  spark-worker:
-    extends: { file: ../common/spark-services.yml, service: spark-worker }
-    volumes: *spark-volumes
-    depends_on: [spark-master]
 
   spark-history:
     extends: { file: ../common/spark-services.yml, service: spark-history }

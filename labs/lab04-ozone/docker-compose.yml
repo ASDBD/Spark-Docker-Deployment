@@ -1,11 +1,13 @@
 # =============================================================================
 #  LAB 04 - Spark + Apache Ozone (object store compatibile Hadoop e S3)
 #
-#  Container sempre attivi:  jupyter (driver), scm, om, datanode, s3g
-#  Modalità:
-#    ./lab.sh up 04           -> Ozone + Spark Standalone (spark-master, spark-worker x N)
-#    ./lab.sh up 04 --local   -> Ozone + Spark local[*] dentro Jupyter (meno RAM)
-#    ./lab.sh up 04 --recon   -> aggiunge Ozone Recon (UI di monitoraggio, porta 9888)
+#  Container:  jupyter (driver), scm, om, datanode, s3g
+#  Modalità:   Spark local[*] dentro Jupyter (il lab riguarda lo storage, non il calcolo)
+#
+#  Da questa cartella:
+#    docker compose up -d --build
+#    COMPOSE_PROFILES=recon docker compose up -d      # aggiunge Ozone Recon (porta 9888)
+#    docker compose --profile '*' down -v
 # =============================================================================
 name: spark-lab04
 
@@ -73,15 +75,6 @@ services:
       WAITFOR: om:9874
     ports:
       - "9888:9888"
-
-  # ---------------------------------------------------------------- Spark Standalone (profilo "cluster")
-  spark-master:
-    extends: { file: ../common/spark-services.yml, service: spark-master }
-
-  spark-worker:
-    extends: { file: ../common/spark-services.yml, service: spark-worker }
-    volumes: *spark-volumes
-    depends_on: [spark-master]
 
   spark-history:
     extends: { file: ../common/spark-services.yml, service: spark-history }
