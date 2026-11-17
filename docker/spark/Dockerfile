@@ -15,6 +15,7 @@ ARG OZONE_VERSION=2.2.1
 FROM apache/ozone:${OZONE_VERSION} AS ozone
 
 FROM quay.io/jupyter/pyspark-notebook:spark-${SPARK_VERSION}
+ARG SPARK_VERSION
 ARG OZONE_VERSION
 
 USER root
@@ -33,7 +34,8 @@ RUN mkdir -p /opt/spark-work /opt/spark-events && \
 USER ${NB_UID}
 
 # boto3: client S3 (usato con il S3 Gateway di Ozone)
-RUN pip install --no-cache-dir boto3 && \
+# pyspark alla stessa versione del cluster (importabile dal kernel Jupyter)
+RUN pip install --no-cache-dir boto3 pyspark==${SPARK_VERSION} && \
     mkdir -p /home/jovyan/.ivy2   # cache di spark.jars.packages (montata come volume)
 
 ENV SPARK_WORKER_DIR=/opt/spark-work \

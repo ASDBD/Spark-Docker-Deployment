@@ -21,8 +21,8 @@ services:
     build: ../../docker/spark
     hostname: jupyter
     ports:
-      - "8888:8888"   # JupyterLab
-      - "4040:4040"   # Spark UI dell'applicazione (attiva solo con una SparkSession aperta)
+      - "127.0.0.1:8888:8888"   # JupyterLab
+      - "127.0.0.1:4040:4040"   # Spark UI dell'applicazione (attiva solo con una SparkSession aperta)
     environment:
       # Master usato di default dai notebook: local[*] | spark://... | yarn
       SPARK_MASTER: ${SPARK_MASTER:-spark://spark-master:7077}
@@ -47,7 +47,7 @@ services:
     environment:
       SPARK_DAEMON_MEMORY: 256m
     ports:
-      - "8080:8080"   # Web UI del master (worker registrati, applicazioni)
+      - "127.0.0.1:8080:8080"   # Web UI del master (worker registrati, applicazioni)
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080"]
       interval: 5s
@@ -83,4 +83,4 @@ services:
       SPARK_DAEMON_MEMORY: 256m
     healthcheck: { disable: true }
     ports:
-      - "18080:18080"
+      - "127.0.0.1:18080:18080"

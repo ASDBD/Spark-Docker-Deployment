@@ -46,7 +46,7 @@ services:
       MYSQL_PASSWORD: spark
     command: ["--innodb-buffer-pool-size=64M", "--performance-schema=OFF"]
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306"
     volumes:
       - ./initdb:/docker-entrypoint-initdb.d:ro   # tabelle e dati di esempio
     healthcheck:
@@ -60,7 +60,7 @@ services:
     hostname: mongo
     command: ["--wiredTigerCacheSizeGB", "0.25"]
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27017:27017"
 
   spark-history:
     extends: { file: ../common/spark-services.yml, service: spark-history }

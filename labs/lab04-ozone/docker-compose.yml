@@ -39,7 +39,7 @@ services:
     environment:
       ENSURE_SCM_INITIALIZED: /data/metadata/scm/current/VERSION
     ports:
-      - "9876:9876"   # Web UI SCM
+      - "127.0.0.1:9876:9876"   # Web UI SCM
 
   om:                                    # Ozone Manager: namespace volumi/bucket/chiavi
     <<: *ozone
@@ -49,7 +49,7 @@ services:
       ENSURE_OM_INITIALIZED: /data/metadata/om/current/VERSION
       WAITFOR: scm:9876
     ports:
-      - "9874:9874"   # Web UI OM
+      - "127.0.0.1:9874:9874"   # Web UI OM
 
   datanode:                              # memorizza i dati (container da 256 MB)
     <<: *ozone
@@ -64,7 +64,7 @@ services:
     environment:
       WAITFOR: om:9874
     ports:
-      - "9878:9878"   # endpoint S3
+      - "127.0.0.1:9878:9878"   # endpoint S3
 
   recon:                                 # Recon: UI di monitoraggio (opzionale)
     <<: *ozone
@@ -74,7 +74,7 @@ services:
     environment:
       WAITFOR: om:9874
     ports:
-      - "9888:9888"
+      - "127.0.0.1:9888:9888"
 
   spark-history:
     extends: { file: ../common/spark-services.yml, service: spark-history }

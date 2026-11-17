@@ -53,7 +53,7 @@ services:
     hostname: namenode
     command: ["namenode"]
     ports:
-      - "9870:9870"   # Web UI del NameNode (file, blocchi, DataNode)
+      - "127.0.0.1:9870:9870"   # Web UI del NameNode (file, blocchi, DataNode)
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:9870"]
       interval: 5s
@@ -82,7 +82,7 @@ services:
     profiles: ["yarn"]
     command: ["resourcemanager"]
     ports:
-      - "8088:8088"   # Web UI di YARN (applicazioni, container, code)
+      - "127.0.0.1:8088:8088"   # Web UI di YARN (applicazioni, container, code)
     depends_on:
       namenode: { condition: service_healthy }
 
@@ -100,7 +100,7 @@ services:
       - ./data:/home/jovyan/data
       - ../../datasets:/home/jovyan/datasets:ro
     ports:
-      - "8042:8042"   # Web UI del NodeManager (container in esecuzione, log)
+      - "127.0.0.1:8042:8042"   # Web UI del NodeManager (container in esecuzione, log)
     depends_on: [resourcemanager]
 
   # ---------------------------------------------------------------- Spark Standalone (profilo "cluster")

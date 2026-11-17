@@ -2,7 +2,7 @@
 
 Laboratori dimostrativi sulle funzionalità fondamentali di **Apache Spark 4.3.0**, eseguiti con Docker Compose.
 
-Ogni laboratorio avvia **solo i container di cui ha bisogno** (niente HDFS se non serve, niente database se non servono...), così da poter girare anche su un portatile. I notebook contengono **codice d'esempio commentato** da eseguire e mostrare, non esercizi.
+Ogni laboratorio ha una propria `README.md` e notebook con una sezione "Step" esplicativa prima di ogni cella. Ogni laboratorio avvia **solo i container di cui ha bisogno** (niente HDFS se non serve, niente database se non servono...), così da poter girare anche su un portatile. I notebook contengono **codice d'esempio commentato** da eseguire e mostrare, non esercizi.
 
 | Lab | Argomento | Container avviati |
 |---|---|---|
@@ -19,19 +19,25 @@ Ogni laboratorio avvia **solo i container di cui ha bisogno** (niente HDFS se no
 * Memoria assegnata a Docker: almeno **4 GB** (consigliati 6 GB per i lab 03 e 04). In caso di poca memoria nel lab 01 usare `SPARK_WORKERS=1`.
 * Spazio disco: circa 9 GB per le immagini.
 
-## Avvio rapido
+## Come eseguire
 
-Ogni laboratorio si avvia **in autonomia con il solo Docker Compose**, dalla sua cartella (la modalità Spark è già impostata nel suo `.env`; le immagini vengono costruite al primo `up`, circa 5-10 minuti):
+Si tiene attivo **un laboratorio alla volta** (usano le stesse porte). Esempio con il lab 01:
+
+1. **Avviare i servizi** dalla cartella del laboratorio (al primo avvio le immagini vengono costruite, circa 5-10 minuti):
+   ```bash
+   cd labs/lab01-spark-core
+   docker compose up -d --build
+   ```
+
+2. **Aprire JupyterLab**: [http://127.0.0.1:8888/lab?token=spark](http://127.0.0.1:8888/lab?token=spark)
+
+3. **Eseguire i notebook** della cartella `notebooks/` nell'ordine numerico, cella per cella.
+
+Per fermare e rimuovere container e volumi:
 
 ```bash
-cd labs/lab01-spark-core
-docker compose up -d --build           # avvia il lab
-docker compose --profile '*' down -v   # ferma e rimuove container e volumi
+docker compose --profile '*' down -v
 ```
-
-Aprire **JupyterLab** su http://localhost:8888/lab?token=spark ed eseguire i notebook nell'ordine.
-
-> Si consiglia di tenere attivo **un laboratorio alla volta**: usano le stesse porte.
 
 ## Modalità di esecuzione
 
@@ -57,22 +63,24 @@ Opzioni, tutte tramite variabili d'ambiente di Compose:
 |---|---|
 | `SPARK_WORKERS=3 docker compose up -d` | numero di worker Standalone (default 2; lab 01 e 03) |
 | `COMPOSE_PROFILES=yarn SPARK_MASTER=yarn docker compose up -d` | lab 03 con YARN al posto dello Standalone |
-| `COMPOSE_PROFILES=cluster,history docker compose up -d` | aggiunge lo Spark History Server (http://localhost:18080) nei lab 01 e 03; negli altri, `COMPOSE_PROFILES=history`; lab 03 con YARN: `COMPOSE_PROFILES=yarn,history SPARK_MASTER=yarn` |
-| `COMPOSE_PROFILES=recon docker compose up -d` | aggiunge Ozone Recon (http://localhost:9888, solo lab 04) |
+| `COMPOSE_PROFILES=cluster,history docker compose up -d` | aggiunge lo Spark History Server (http://127.0.0.1:18080) nei lab 01 e 03; negli altri, `COMPOSE_PROFILES=history`; lab 03 con YARN: `COMPOSE_PROFILES=yarn,history SPARK_MASTER=yarn` |
+| `COMPOSE_PROFILES=recon docker compose up -d` | aggiunge Ozone Recon (http://127.0.0.1:9888, solo lab 04) |
 
 Altri comandi utili: `docker compose ps`, `docker compose logs -f namenode`, `docker compose --profile '*' stop` (ferma mantenendo lo stato).
 
 ## Interfacce web
 
+Tutte le porte sono pubblicate solo su `127.0.0.1` (raggiungibili solo dal proprio computer).
+
 | Servizio | URL | Disponibile |
 |---|---|---|
-| JupyterLab | http://localhost:8888 (token `spark`) | sempre |
-| Spark UI dell'applicazione | http://localhost:4040 | con una SparkSession attiva |
-| Spark Master | http://localhost:8080 | modalità Standalone (lab 01, 03) |
-| HDFS NameNode | http://localhost:9870 | lab 03 |
-| YARN ResourceManager / NodeManager | http://localhost:8088 · http://localhost:8042 | lab 03 con YARN |
-| Ozone Manager / SCM / S3 Gateway | http://localhost:9874 · http://localhost:9876 · http://localhost:9878 | lab 04 |
-| MySQL / MongoDB | `localhost:3306` (spark/spark) · `localhost:27017` | lab 05 |
+| JupyterLab | http://127.0.0.1:8888 (token `spark`) | sempre |
+| Spark UI dell'applicazione | http://127.0.0.1:4040 | con una SparkSession attiva |
+| Spark Master | http://127.0.0.1:8080 | modalità Standalone (lab 01, 03) |
+| HDFS NameNode | http://127.0.0.1:9870 | lab 03 |
+| YARN ResourceManager / NodeManager | http://127.0.0.1:8088 · http://127.0.0.1:8042 | lab 03 con YARN |
+| Ozone Manager / SCM / S3 Gateway | http://127.0.0.1:9874 · http://127.0.0.1:9876 · http://127.0.0.1:9878 | lab 04 |
+| MySQL / MongoDB | `127.0.0.1:3306` (spark/spark) · `127.0.0.1:27017` | lab 05 |
 
 ## Struttura del repository
 
@@ -84,6 +92,7 @@ docker/
 labs/
   common/spark-services.yml   servizi Spark riutilizzati da ogni lab (extends)
   labNN-.../
+    README.md              guida del laboratorio
     docker-compose.yml     container del laboratorio (con profili per le modalità)
     notebooks/             notebook dimostrativi (montati in /home/jovyan/work)
     data/                  output dei notebook, condiviso tra driver ed executor
